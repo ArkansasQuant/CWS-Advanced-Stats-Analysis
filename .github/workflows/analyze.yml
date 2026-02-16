@@ -2,6 +2,17 @@ name: CWS Advanced Stats Analysis
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - test
+          - scrape-only
+          - analyze-only
 
 permissions:
   contents: write
@@ -30,17 +41,45 @@ jobs:
         run: mkdir -p data results
 
       - name: Scrape NCAA team stats
-        run: python scrape_ncaa_stats.py
+        if: inputs.mode != 'analyze-only'
+        run: |
+          if [ "${{ inputs.mode }}" = "test" ]; then
+            python scrape_ncaa_stats.py --test --debug
+          else
+            python scrape_ncaa_stats.py
+          fi
         env:
           PYTHONUNBUFFERED: "1"
 
       - name: Run analysis
-        run: python analyze_cws_stats.py
+        if: inputs.mode != 'scrape-only'
+        run: python analyze_cws_stats.py --scenario all
 
       - name: Generate visualizations
+        if: inputs.mode != 'scrape-only'
         run: python visualize_results.py
 
+      - name: Upload debug artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-logs
+          path: |
+            data/scrape_log.txt
+            data/stat_metadata.json
+            results/analysis_log.txt
+          retention-days: 30
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-results
+          path: results/
+          retention-days: 90
+
       - name: Commit results
+        if: inputs.mode != 'test'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
