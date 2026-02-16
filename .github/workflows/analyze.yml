@@ -36,6 +36,8 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps
 
       - name: Create directories
         run: mkdir -p data results
@@ -67,6 +69,7 @@ jobs:
           path: |
             data/scrape_log.txt
             data/stat_metadata.json
+            data/debug_html/
             results/analysis_log.txt
           retention-days: 30
 
